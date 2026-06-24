@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Employment Survey — Admin</title>
+  <%- include('partials-style') %>
+</head>
+<body>
+  <nav>
+    <strong>Employment Survey Admin</strong>
+    &nbsp;|&nbsp; <a href="/">Dashboard</a> <a href="/report">Report</a>
+  </nav>
+  <h1>Companies</h1>
+
+  <form method="POST" action="/admin/companies" class="row">
+    <div>
+      <label>Contact email</label>
+      <input type="email" name="contact_email" placeholder="hr@company.com" required>
+    </div>
+    <div>
+      <label>Label (optional)</label>
+      <input type="text" name="company_label" placeholder="Acme Ltd">
+    </div>
+    <div>
+      <button type="submit">Add company &amp; generate link</button>
+    </div>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Label</th><th>Email</th><th>Status</th><th>Created</th><th>Submitted</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% companies.forEach(c => { %>
+        <tr>
+          <td><%= c.company_label || c.registered_name || '—' %></td>
+          <td><%= c.contact_email %></td>
+          <td><span class="badge <%= c.status %>"><%= c.status %></span></td>
+          <td class="muted"><%= c.created_at %></td>
+          <td class="muted"><%= c.submitted_at || '—' %></td>
+          <td>
+            <a class="btn secondary" href="/admin/companies/<%= c.id %>/email-preview">Email text</a>
+            <a class="btn secondary" href="/survey/<%= c.token %>" target="_blank">Open survey</a>
+            <form method="POST" action="/admin/companies/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this company entry?')">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!companies.length) { %>
+        <tr><td colspan="6" class="muted">No companies added yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <p class="muted">Base URL used for survey links: <code><%= baseUrl %></code></p>
+</body>
+</html>
