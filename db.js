@@ -27,8 +27,17 @@ db.exec(`
     other_info TEXT,
     contact_name TEXT,
     contact_position TEXT,
-    submission_date TEXT
+    submission_date TEXT,
+
+    email_sent_at TEXT,
+    email_send_error TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    scheduled_send_at TEXT
+  );
+  INSERT OR IGNORE INTO settings (id, scheduled_send_at) VALUES (1, NULL);
 
   CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,5 +56,14 @@ db.exec(`
     benefits_value REAL
   );
 `);
+
+// Migrate columns onto pre-existing databases that predate this schema addition.
+for (const col of ['email_sent_at TEXT', 'email_send_error TEXT']) {
+  try {
+    db.exec(`ALTER TABLE companies ADD COLUMN ${col}`);
+  } catch (err) {
+    if (!String(err.message).includes('duplicate column')) throw err;
+  }
+}
 
 module.exports = db;

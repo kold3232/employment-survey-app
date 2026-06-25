@@ -12,8 +12,20 @@
   </nav>
   <h1>Companies</h1>
 
+  <% if (!emailConfigured) { %>
+    <p class="badge pending">Email sending is not configured yet — set SMTP_HOST / SMTP_USER / SMTP_PASS env vars. Until then, use "Email text" to copy/paste manually.</p>
+  <% } %>
+
   <% if (bulkAdded !== null) { %>
     <p class="badge submitted">Bulk add: <%= bulkAdded %> added<% if (bulkSkipped > 0) { %>, <%= bulkSkipped %> skipped (invalid email)<% } %></p>
+  <% } %>
+
+  <% if (sendResult === 'ok') { %>
+    <p class="badge submitted">Email sent successfully.</p>
+  <% } else if (sendResult === 'fail') { %>
+    <p class="badge pending">Email failed to send — check the company's row for the error.</p>
+  <% } else if (sendResult === 'batch') { %>
+    <p class="badge submitted">Batch send complete: <%= sent %> sent<% if (failed > 0) { %>, <%= failed %> failed<% } %>.</p>
   <% } %>
 
   <form method="POST" action="/admin/companies" class="row">
@@ -43,10 +55,31 @@ info@gamma.gi"></textarea>
     </form>
   </details>
 
+  <h2>Send Surveys</h2>
+  <form method="POST" action="/admin/schedule" class="row">
+    <div>
+      <label>Scheduled send time (optional)</label>
+      <input type="datetime-local" name="scheduled_send_at" value="<%= settings.scheduled_send_at || '' %>">
+    </div>
+    <div>
+      <button type="submit" class="secondary">Save schedule</button>
+    </div>
+  </form>
+  <p class="muted">
+    <% if (settings.scheduled_send_at) { %>
+      Surveys will be auto-sent to all pending companies at <strong><%= settings.scheduled_send_at %></strong>, once the external trigger pings the app (see setup notes).
+    <% } else { %>
+      No scheduled time set — emails only go out when you click "Send" below, or manually via "Email text".
+    <% } %>
+  </p>
+  <form method="POST" action="/admin/companies/send-all" style="margin: 10px 0;" onsubmit="return confirm('Send the survey email to every pending company right now?')">
+    <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send to all pending now</button>
+  </form>
+
   <table>
     <thead>
       <tr>
-        <th>Label</th><th>Email</th><th>Status</th><th>Created</th><th>Submitted</th><th>Actions</th>
+        <th>Label</th><th>Email</th><th>Status</th><th>Created</th><th>Submitted</th><th>Email sent</th><th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -57,9 +90,21 @@ info@gamma.gi"></textarea>
           <td><span class="badge <%= c.status %>"><%= c.status %></span></td>
           <td class="muted"><%= c.created_at %></td>
           <td class="muted"><%= c.submitted_at || '—' %></td>
+          <td class="muted">
+            <% if (c.email_sent_at) { %>
+              <%= c.email_sent_at %>
+            <% } else if (c.email_send_error) { %>
+              <span style="color:#dc2626;" title="<%= c.email_send_error %>">failed</span>
+            <% } else { %>
+              not sent
+            <% } %>
+          </td>
           <td>
             <a class="btn secondary" href="/admin/companies/<%= c.id %>/email-preview">Email text</a>
             <a class="btn secondary" href="/survey/<%= c.token %>" target="_blank">Open survey</a>
+            <form method="POST" action="/admin/companies/<%= c.id %>/send" style="display:inline">
+              <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send</button>
+            </form>
             <form method="POST" action="/admin/companies/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this company entry?')">
               <button type="submit" class="danger">Delete</button>
             </form>
@@ -67,7 +112,7 @@ info@gamma.gi"></textarea>
         </tr>
       <% }) %>
       <% if (!companies.length) { %>
-        <tr><td colspan="6" class="muted">No companies added yet.</td></tr>
+        <tr><td colspan="7" class="muted">No companies added yet.</td></tr>
       <% } %>
     </tbody>
   </table>

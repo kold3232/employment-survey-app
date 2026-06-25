@@ -2,6 +2,7 @@ const express = require('express');
 const { nanoid } = require('nanoid');
 const db = require('./db');
 const { buildReport } = require('./report');
+const mailer = require('./mailer');
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -24,6 +25,41 @@ function requireAdmin(req, res, next) {
   res.status(401).send('Authentication required');
 }
 
+function buildEmailContent(company) {
+  const link = `${BASE_URL}/survey/${company.token}`;
+  const subject = 'Employment Survey 2025 - Action Required';
+  const body = [
+    `Dear Sir/Madam,`,
+    ``,
+    `Please complete the Employment Survey 2025 using the secure link below.`,
+    `This link is unique to your company - please do not share it.`,
+    ``,
+    link,
+    ``,
+    `If you have any queries please do not hesitate to contact us.`,
+    ``,
+    `Kind regards,`,
+  ].join('\n');
+  return { link, subject, body };
+}
+
+async function sendCompanyEmail(company) {
+  const { subject, body } = buildEmailContent(company);
+  try {
+    await mailer.sendSurveyEmail({ to: company.contact_email, subject, text: body });
+    db.prepare('UPDATE companies SET email_sent_at = datetime(\'now\'), email_send_error = NULL WHERE id = ?')
+      .run(company.id);
+    return { ok: true };
+  } catch (err) {
+    db.prepare('UPDATE companies SET email_send_error = ? WHERE id = ?').run(err.message, company.id);
+    return { ok: false, error: err.message };
+  }
+}
+
+function getSettings() {
+  return db.prepare('SELECT * FROM settings WHERE id = 1').get();
+}
+
 // ---------- Admin dashboard ----------
 app.get('/', requireAdmin, (req, res) => {
   const companies = db.prepare(
@@ -34,7 +70,38 @@ app.get('/', requireAdmin, (req, res) => {
     baseUrl: BASE_URL,
     bulkAdded: req.query.bulk_added ?? null,
     bulkSkipped: req.query.bulk_skipped ?? null,
+    emailConfigured: mailer.isConfigured(),
+    settings: getSettings(),
+    sendResult: req.query.send_result ?? null,
+    sent: req.query.sent ?? null,
+    failed: req.query.failed ?? null,
   });
+});
+
+app.post('/admin/schedule', requireAdmin, (req, res) => {
+  const { scheduled_send_at } = req.body;
+  db.prepare('UPDATE settings SET scheduled_send_at = ? WHERE id = 1')
+    .run(scheduled_send_at ? scheduled_send_at : null);
+  res.redirect('/');
+});
+
+app.post('/admin/companies/:id/send', requireAdmin, async (req, res) => {
+  const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(req.params.id);
+  if (!company) return res.status(404).send('Not found');
+  const result = await sendCompanyEmail(company);
+  res.redirect(`/?send_result=${result.ok ? 'ok' : 'fail'}`);
+});
+
+app.post('/admin/companies/send-all', requireAdmin, async (req, res) => {
+  const pending = db.prepare(
+    `SELECT * FROM companies WHERE status = 'pending' AND email_sent_at IS NULL`
+  ).all();
+  let sent = 0, failed = 0;
+  for (const company of pending) {
+    const result = await sendCompanyEmail(company);
+    if (result.ok) sent++; else failed++;
+  }
+  res.redirect(`/?send_result=batch&sent=${sent}&failed=${failed}`);
 });
 
 app.post('/admin/companies', requireAdmin, (req, res) => {
@@ -81,21 +148,36 @@ app.post('/admin/companies/:id/delete', requireAdmin, (req, res) => {
 app.get('/admin/companies/:id/email-preview', requireAdmin, (req, res) => {
   const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(req.params.id);
   if (!company) return res.status(404).send('Not found');
-  const link = `${BASE_URL}/survey/${company.token}`;
-  const subject = 'Employment Survey 2025 - Action Required';
-  const body = [
-    `Dear Sir/Madam,`,
-    ``,
-    `Please complete the Employment Survey 2025 using the secure link below.`,
-    `This link is unique to your company - please do not share it.`,
-    ``,
-    link,
-    ``,
-    `If you have any queries please do not hesitate to contact us.`,
-    ``,
-    `Kind regards,`,
-  ].join('\n');
-  res.render('email-preview', { company, link, subject, body });
+  const { link, subject, body } = buildEmailContent(company);
+  res.render('email-preview', { company, link, subject, body, emailConfigured: mailer.isConfigured() });
+});
+
+// ---------- Scheduled send trigger (called by an external cron pinger) ----------
+app.all('/cron/send-scheduled', async (req, res) => {
+  const secret = req.query.secret || req.headers['x-cron-secret'];
+  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  const settings = getSettings();
+  if (!settings.scheduled_send_at) {
+    return res.json({ fired: false, reason: 'no scheduled_send_at set' });
+  }
+  if (new Date(settings.scheduled_send_at) > new Date()) {
+    return res.json({ fired: false, reason: 'scheduled time not reached yet' });
+  }
+
+  const pending = db.prepare(
+    `SELECT * FROM companies WHERE status = 'pending' AND email_sent_at IS NULL`
+  ).all();
+
+  let sent = 0, failed = 0;
+  for (const company of pending) {
+    const result = await sendCompanyEmail(company);
+    if (result.ok) sent++; else failed++;
+  }
+
+  res.json({ fired: true, sent, failed });
 });
 
 app.get('/report', requireAdmin, async (req, res) => {

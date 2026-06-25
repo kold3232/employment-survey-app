@@ -6,17 +6,93 @@
   <title>Employment Survey 2025</title>
   <%- include('partials-style') %>
   <style>
-    .table-scroll { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; }
-    table.emp-table { min-width: 1100px; margin: 0; }
-    table.emp-table th { font-size: 0.75rem; white-space: nowrap; }
-    table.emp-table td { padding: 4px; }
-    table.emp-table input, table.emp-table select { width: 100%; box-sizing: border-box; }
-    .field-error { border-color: #dc2626 !important; }
+    .section-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin: 14px 0 28px;
+      background: #fafafa;
+    }
+    .section-card h2 { margin-top: 0; }
+    .section-card > p.muted { margin-top: -4px; }
+
+    .nil-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 10px 0 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .nil-row input { width: auto; cursor: pointer; }
+
+    .table-scroll {
+      overflow-x: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      background: white;
+    }
+
+    /* Header and data rows share this exact column template so they always line up */
+    .emp-cols {
+      display: grid;
+      grid-template-columns: 72px 72px 90px minmax(160px, 1fr) 130px 72px 80px 80px 90px 100px 100px 36px;
+      column-gap: 8px;
+      align-items: center;
+      min-width: 1180px;
+    }
+    .emp-header {
+      padding: 10px 10px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid #e0e0e0;
+      border-radius: 8px 8px 0 0;
+    }
+    .emp-row {
+      padding: 8px 10px;
+      border-bottom: 1px solid #ececec;
+    }
+    .emp-row:hover { background: #f8fafc; }
+    .emp-row:last-child { border-bottom: none; }
+
+    .emp-cols select, .emp-cols input {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 0.82rem;
+      padding: 6px 8px;
+      height: 34px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: white;
+    }
+    .emp-cols select { cursor: pointer; }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: #dc2626;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      justify-self: center;
+    }
+    .remove-btn:hover { color: #b91c1c; }
+
+    .add-row-btn { margin-top: 10px; }
+
+    .field-error { border-color: #dc2626 !important; box-shadow: 0 0 0 2px rgba(220,38,38,0.15); }
     .error-msg { color: #dc2626; font-size: 0.85rem; margin: 4px 0; }
-    .nil-row { margin: 8px 0; }
+
     @media (max-width: 700px) {
       .row { flex-direction: column; align-items: stretch; }
       .row > div { width: 100%; }
+      .section-card { padding: 14px; }
     }
   </style>
 </head>
@@ -50,83 +126,78 @@
       <div><label>Date</label><input type="date" name="submission_date"></div>
     </div>
 
-    <h2>Section A: Weekly Paid Employees</h2>
-    <p class="muted">Add one row per employee. Enter hours, overtime, total weekly gross earnings, and weekly value of benefits.</p>
-    <label class="nil-row"><input type="checkbox" id="weekly-nil" onchange="toggleNil('weekly')"> Nil return — no weekly-paid employees</label>
-    <div id="weekly-section">
-      <div class="table-scroll">
-        <table class="emp-table">
-          <thead>
-            <tr>
-              <th>Sex</th><th>Age</th><th>Type</th><th>Occupation *</th><th>Nationality</th>
-              <th>Frontier</th><th>Detached</th><th>Hours</th><th>Overtime hrs</th>
-              <th>Gross earnings</th><th>Benefits value</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="weekly-rows"></tbody>
-        </table>
+    <div class="section-card">
+      <h2>Section A: Weekly Paid Employees</h2>
+      <p class="muted">Add one row per employee. Enter hours, overtime, total weekly gross earnings, and weekly value of benefits.</p>
+      <label class="nil-row"><input type="checkbox" id="weekly-nil" onchange="toggleNil('weekly')"> Nil return — no weekly-paid employees</label>
+      <div id="weekly-section">
+        <div class="table-scroll">
+          <div class="emp-cols emp-header">
+            <div>Sex</div><div>Age</div><div>Type</div><div>Occupation *</div><div>Nationality</div>
+            <div>Frontier</div><div>Detached</div><div>Hours</div><div>Overtime hrs</div>
+            <div>Gross earnings</div><div>Benefits value</div><div></div>
+          </div>
+          <div id="weekly-rows"></div>
+        </div>
+        <button type="button" class="secondary add-row-btn" onclick="addRow('weekly')">+ Add weekly employee</button>
       </div>
-      <button type="button" onclick="addRow('weekly')">+ Add weekly employee</button>
     </div>
 
-    <h2>Section B: Monthly Paid Employees</h2>
-    <p class="muted">Add one row per employee. Enter monthly gross earnings and monthly value of benefits.</p>
-    <label class="nil-row"><input type="checkbox" id="monthly-nil" onchange="toggleNil('monthly')"> Nil return — no monthly-paid employees</label>
-    <div id="monthly-section">
-      <div class="table-scroll">
-        <table class="emp-table">
-          <thead>
-            <tr>
-              <th>Sex</th><th>Age</th><th>Type</th><th>Occupation *</th><th>Nationality</th>
-              <th>Frontier</th><th>Detached</th><th>Hours</th><th>Overtime hrs</th>
-              <th>Gross earnings</th><th>Benefits value</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="monthly-rows"></tbody>
-        </table>
+    <div class="section-card">
+      <h2>Section B: Monthly Paid Employees</h2>
+      <p class="muted">Add one row per employee. Enter monthly gross earnings and monthly value of benefits.</p>
+      <label class="nil-row"><input type="checkbox" id="monthly-nil" onchange="toggleNil('monthly')"> Nil return — no monthly-paid employees</label>
+      <div id="monthly-section">
+        <div class="table-scroll">
+          <div class="emp-cols emp-header">
+            <div>Sex</div><div>Age</div><div>Type</div><div>Occupation *</div><div>Nationality</div>
+            <div>Frontier</div><div>Detached</div><div>Hours</div><div>Overtime hrs</div>
+            <div>Gross earnings</div><div>Benefits value</div><div></div>
+          </div>
+          <div id="monthly-rows"></div>
+        </div>
+        <button type="button" class="secondary add-row-btn" onclick="addRow('monthly')">+ Add monthly employee</button>
       </div>
-      <button type="button" onclick="addRow('monthly')">+ Add monthly employee</button>
     </div>
 
-    <h2></h2>
     <button type="submit">Submit survey</button>
   </form>
 
   <template id="row-template">
-    <tr class="emp-row">
-      <td><select name="__SECTION___sex[]"><option value="">—</option><option>Male</option><option>Female</option></select></td>
-      <td><select name="__SECTION___age_band[]"><option value="">—</option><option>Under 18</option><option>18 to 24</option><option>25 and over</option></select></td>
-      <td><select name="__SECTION___employment_type[]"><option value="">—</option><option>Full-time</option><option>Part-time</option></select></td>
-      <td><input name="__SECTION___occupation[]" placeholder="e.g. Accounts Clerk" required></td>
-      <td><select name="__SECTION___nationality[]">
+    <div class="emp-cols emp-row">
+      <select name="__SECTION___sex[]"><option value="">—</option><option>Male</option><option>Female</option></select>
+      <select name="__SECTION___age_band[]"><option value="">—</option><option>Under 18</option><option>18 to 24</option><option>25 and over</option></select>
+      <select name="__SECTION___employment_type[]"><option value="">—</option><option>Full-time</option><option>Part-time</option></select>
+      <input name="__SECTION___occupation[]" placeholder="e.g. Accounts Clerk" required>
+      <select name="__SECTION___nationality[]">
         <option value="">—</option>
         <option>Gibraltarian</option><option>UK British</option><option>Other British</option>
         <option>Spanish</option><option>Moroccan</option><option>Other E.U.</option><option>Other</option>
-      </select></td>
-      <td><select name="__SECTION___frontier_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select></td>
-      <td><select name="__SECTION___detached_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select></td>
-      <td><input name="__SECTION___hours_worked[]" type="number" step="0.1" min="0"></td>
-      <td><input name="__SECTION___overtime_hours[]" type="number" step="0.1" min="0"></td>
-      <td><input name="__SECTION___gross_earnings[]" type="number" step="0.01" min="0"></td>
-      <td><input name="__SECTION___benefits_value[]" type="number" step="0.01" min="0"></td>
-      <td><button type="button" class="danger" onclick="this.closest('tr').remove()">✕</button></td>
-    </tr>
+      </select>
+      <select name="__SECTION___frontier_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select>
+      <select name="__SECTION___detached_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select>
+      <input name="__SECTION___hours_worked[]" type="number" step="0.1" min="0">
+      <input name="__SECTION___overtime_hours[]" type="number" step="0.1" min="0">
+      <input name="__SECTION___gross_earnings[]" type="number" step="0.01" min="0">
+      <input name="__SECTION___benefits_value[]" type="number" step="0.01" min="0">
+      <button type="button" class="remove-btn" onclick="this.closest('.emp-row').remove()" title="Remove row">✕</button>
+    </div>
   </template>
 
   <script>
     function addRow(section) {
       const tpl = document.getElementById('row-template').innerHTML.replaceAll('__SECTION__', section);
-      const tbody = document.getElementById(section + '-rows');
-      const wrapper = document.createElement('tbody');
+      const container = document.getElementById(section + '-rows');
+      const wrapper = document.createElement('div');
       wrapper.innerHTML = tpl.trim();
-      tbody.appendChild(wrapper.firstElementChild);
+      container.appendChild(wrapper.firstElementChild);
     }
 
     function toggleNil(section) {
       const nil = document.getElementById(section + '-nil').checked;
-      const rowsBody = document.getElementById(section + '-rows');
+      const rows = document.getElementById(section + '-rows');
       const addBtn = document.querySelector(`#${section}-section button`);
-      rowsBody.querySelectorAll('tr').forEach(tr => tr.remove());
+      rows.querySelectorAll('.emp-row').forEach(row => row.remove());
       if (nil) {
         addBtn.disabled = true;
       } else {
