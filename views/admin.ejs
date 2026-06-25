@@ -124,15 +124,20 @@ info@gamma.gi"></textarea>
               not sent
             <% } %>
           </td>
-          <td>
-            <a class="btn secondary" href="/admin/companies/<%= c.id %>/email-preview">Email text</a>
-            <a class="btn secondary" href="/survey/<%= c.token %>" target="_blank">Open survey</a>
-            <form method="POST" action="/admin/companies/<%= c.id %>/send" style="display:inline">
-              <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send</button>
-            </form>
-            <form method="POST" action="/admin/companies/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this company entry?')">
-              <button type="submit" class="danger">Delete</button>
-            </form>
+          <td class="actions-cell">
+            <details class="actions-menu">
+              <summary>Actions ▾</summary>
+              <div class="actions-dropdown">
+                <a href="/admin/companies/<%= c.id %>/email-preview">Email text</a>
+                <a href="/survey/<%= c.token %>" target="_blank">Open survey</a>
+                <form method="POST" action="/admin/companies/<%= c.id %>/send">
+                  <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send email now</button>
+                </form>
+                <form method="POST" action="/admin/companies/<%= c.id %>/delete" onsubmit="return confirm('Delete this company entry?')">
+                  <button type="submit" class="danger">Delete</button>
+                </form>
+              </div>
+            </details>
           </td>
         </tr>
       <% }) %>
@@ -143,5 +148,22 @@ info@gamma.gi"></textarea>
   </table>
 
   <p class="muted">Base URL used for survey links: <code><%= baseUrl %></code></p>
+
+  <script>
+    document.addEventListener('click', function (e) {
+      document.querySelectorAll('.actions-menu[open]').forEach(function (menu) {
+        if (!menu.contains(e.target)) menu.removeAttribute('open');
+      });
+    });
+    document.querySelectorAll('.actions-menu').forEach(function (menu) {
+      menu.addEventListener('toggle', function () {
+        if (menu.open) {
+          document.querySelectorAll('.actions-menu[open]').forEach(function (other) {
+            if (other !== menu) other.removeAttribute('open');
+          });
+        }
+      });
+    });
+  </script>
 </body>
 </html>

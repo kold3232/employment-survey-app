@@ -3,21 +3,116 @@
   body { font-family: -apple-system, Segoe UI, Arial, sans-serif; max-width: 980px; margin: 30px auto; padding: 0 16px; color: #1a1a1a; }
   h1 { font-size: 1.5rem; }
   h2 { font-size: 1.2rem; margin-top: 2rem; }
+
   table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 0.9rem; }
-  th { background: #f4f4f4; }
-  input, select, textarea { padding: 6px 8px; font-size: 0.9rem; border: 1px solid #ccc; border-radius: 4px; }
-  button, .btn { padding: 8px 14px; border-radius: 4px; border: none; background: #2563eb; color: white; cursor: pointer; font-size: 0.9rem; }
+  th, td { border: none; border-bottom: 1px solid #eee; padding: 10px 12px; text-align: left; font-size: 0.88rem; vertical-align: middle; }
+  th {
+    background: #f8f9fb;
+    color: #4b5563;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  tbody tr:hover { background: #fafbfc; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  input, select, textarea {
+    padding: 7px 10px;
+    font-size: 0.9rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
+
+  button, .btn {
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background 0.15s ease;
+    display: inline-block;
+  }
+  button:hover, .btn:hover { background: #1d4ed8; }
+  button:disabled { background: #cbd5e1; cursor: not-allowed; }
   button.secondary, .btn.secondary { background: #6b7280; }
+  button.secondary:hover, .btn.secondary:hover { background: #52606d; }
   button.danger, .btn.danger { background: #dc2626; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+  button.danger:hover, .btn.danger:hover { background: #b91c1c; }
+
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; }
   .badge.pending { background: #fef3c7; color: #92400e; }
   .badge.submitted { background: #d1fae5; color: #065f46; }
-  .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+
+  .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
   .row > div { display: flex; flex-direction: column; gap: 4px; }
+  .row label { font-size: 0.8rem; color: #4b5563; }
+
   .emp-row { display: grid; grid-template-columns: repeat(11, 1fr) auto; gap: 4px; margin-bottom: 6px; align-items: center; }
   .emp-row input, .emp-row select { width: 100%; font-size: 0.8rem; padding: 4px; }
-  nav a { margin-right: 16px; }
-  .muted { color: #666; font-size: 0.85rem; }
-  pre { background: #f6f6f6; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+
+  nav { padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 8px; }
+  nav a { margin-right: 16px; color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+  nav a:hover { text-decoration: underline; }
+
+  .muted { color: #6b7280; font-size: 0.85rem; }
+  pre { background: #f6f6f6; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+
+  /* Actions dropdown menu used in admin tables */
+  .actions-cell { position: relative; text-align: right; }
+  .actions-menu { position: relative; display: inline-block; }
+  .actions-menu summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 0.85rem;
+    font-weight: 500;
+    user-select: none;
+    border: 1px solid #e5e7eb;
+  }
+  .actions-menu summary::-webkit-details-marker { display: none; }
+  .actions-menu summary:hover { background: #e5e7eb; }
+  .actions-menu[open] summary { background: #e5e7eb; }
+  .actions-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 170px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    z-index: 20;
+    overflow: hidden;
+    padding: 4px;
+  }
+  .actions-dropdown a, .actions-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    color: #1f2937;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-weight: 400;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .actions-dropdown a:hover, .actions-dropdown button:hover { background: #f3f4f6; }
+  .actions-dropdown button.danger { color: #dc2626; background: none; }
+  .actions-dropdown button.danger:hover { background: #fef2f2; }
+  .actions-dropdown button:disabled { color: #9ca3af; cursor: not-allowed; }
+  .actions-dropdown button:disabled:hover { background: none; }
+  .actions-dropdown form { margin: 0; }
 </style>
