@@ -10,10 +10,10 @@
   <h1>Employment Survey — Compiled Report</h1>
 
   <h2>Summary</h2>
-  <p><%= report.summaryText %></p>
+  <div class="card"><p style="margin:0;"><%= report.summaryText %></p></div>
 
   <h2>Overview</h2>
-  <table>
+  <table class="card-table">
     <tr><th>Companies responded</th><td><%= report.totalCompanies %></td></tr>
     <tr><th>Total employees recorded</th><td><%= report.totalEmployees %></td></tr>
     <tr><th>Weekly-paid employees</th><td><%= report.weeklyCount %></td></tr>
@@ -27,28 +27,28 @@
   </table>
 
   <h2>Breakdown by Sex</h2>
-  <table>
+  <table class="card-table">
     <% Object.entries(report.sexBreakdown).forEach(([k,v]) => { %>
       <tr><th><%= k %></th><td><%= v %></td></tr>
     <% }) %>
   </table>
 
   <h2>Breakdown by Employment Type</h2>
-  <table>
+  <table class="card-table">
     <% Object.entries(report.employmentTypeBreakdown).forEach(([k,v]) => { %>
       <tr><th><%= k %></th><td><%= v %></td></tr>
     <% }) %>
   </table>
 
   <h2>Breakdown by Nationality</h2>
-  <table>
+  <table class="card-table">
     <% Object.entries(report.nationalityBreakdown).forEach(([k,v]) => { %>
       <tr><th><%= k %></th><td><%= v %></td></tr>
     <% }) %>
   </table>
 
   <h2>Breakdown by Occupation</h2>
-  <table>
+  <table class="card-table">
     <% Object.entries(report.occupationBreakdown).forEach(([k,v]) => { %>
       <tr><th><%= k %></th><td><%= v %></td></tr>
     <% }) %>
@@ -56,7 +56,7 @@
 
   <% if (report.outliers.length) { %>
     <h2>Earnings Outliers</h2>
-    <table>
+    <table class="card-table">
       <thead><tr><th>Occupation</th><th>Section</th><th>Gross Earnings</th></tr></thead>
       <% report.outliers.forEach(o => { %>
         <tr><td><%= o.occupation %></td><td><%= o.section %></td><td>£<%= o.gross_earnings.toFixed(2) %></td></tr>
@@ -65,7 +65,7 @@
   <% } %>
 
   <h2>Responding Companies</h2>
-  <table>
+  <table class="card-table">
     <thead><tr><th>Name</th><th>Address</th><th>Submitted</th></tr></thead>
     <% report.companies.forEach(c => { %>
       <tr><td><%= c.registered_name %></td><td><%= c.address %></td><td><%= c.submitted_at %></td></tr>

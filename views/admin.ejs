@@ -7,8 +7,8 @@
 </head>
 <body>
   <nav>
-    <strong>Employment Survey Admin</strong>
-    &nbsp;|&nbsp; <a href="/">Dashboard</a> <a href="/report">Report</a>
+    <strong>Employment Survey</strong>
+    <a href="/">Dashboard</a> <a href="/report">Report</a>
   </nav>
   <h1>Companies</h1>
 
@@ -28,51 +28,58 @@
     <p class="badge submitted">Batch send complete: <%= sent %> sent<% if (failed > 0) { %>, <%= failed %> failed<% } %>.</p>
   <% } %>
 
-  <form method="POST" action="/admin/companies" class="row">
-    <div>
-      <label>Contact email</label>
-      <input type="email" name="contact_email" placeholder="hr@company.com" required>
-    </div>
-    <div>
-      <label>Label (optional)</label>
-      <input type="text" name="company_label" placeholder="Acme Ltd">
-    </div>
-    <div>
-      <button type="submit">Add company &amp; generate link</button>
-    </div>
-  </form>
-
-  <details style="margin: 16px 0;">
-    <summary style="cursor:pointer;">Bulk add multiple companies</summary>
-    <form method="POST" action="/admin/companies/bulk" style="margin-top: 10px;">
-      <label class="muted">One per line: <code>email</code> or <code>email, label</code></label>
-      <textarea name="bulk_input" rows="6" style="width:100%; max-width:500px; font-family:monospace;" placeholder="hr@acme.gi, Acme Ltd
-contact@beta.gi, Beta Co
-info@gamma.gi"></textarea>
-      <div style="margin-top:6px;">
-        <button type="submit">Bulk add</button>
+  <div class="card">
+    <form method="POST" action="/admin/companies" class="row">
+      <div>
+        <label>Contact email</label>
+        <input type="email" name="contact_email" placeholder="hr@company.com" required>
+      </div>
+      <div>
+        <label>Label (optional)</label>
+        <input type="text" name="company_label" placeholder="Acme Ltd">
+      </div>
+      <div>
+        <button type="submit">Add company &amp; generate link</button>
       </div>
     </form>
-  </details>
+
+    <details style="margin: 16px 0 0;">
+      <summary style="cursor:pointer; font-size:0.88rem; font-weight:600; color: var(--text-muted);">Bulk add multiple companies</summary>
+      <form method="POST" action="/admin/companies/bulk" style="margin-top: 10px;">
+        <label class="muted">One per line: <code>email</code> or <code>email, label</code></label>
+        <textarea name="bulk_input" rows="6" style="width:100%; max-width:500px; font-family:monospace; display:block; margin-top:6px;" placeholder="hr@acme.gi, Acme Ltd
+contact@beta.gi, Beta Co
+info@gamma.gi"></textarea>
+        <div style="margin-top:10px;">
+          <button type="submit">Bulk add</button>
+        </div>
+      </form>
+    </details>
+  </div>
 
   <h2>Send Surveys</h2>
-  <form method="POST" action="/admin/schedule" class="row" id="schedule-form">
-    <div>
-      <label>Scheduled send time (your local time)</label>
-      <input type="datetime-local" id="scheduled-local-input">
-      <input type="hidden" name="scheduled_send_at" id="scheduled-utc-input">
-    </div>
-    <div>
-      <button type="submit" class="secondary">Save schedule</button>
-    </div>
-  </form>
-  <p class="muted">
-    <% if (settings.scheduled_send_at) { %>
-      Surveys will be auto-sent to all pending companies at <strong id="scheduled-display"></strong> your local time, once the external trigger pings the app (see setup notes).
-    <% } else { %>
-      No scheduled time set — emails only go out when you click "Send" below, or manually via "Email text".
-    <% } %>
-  </p>
+  <div class="card">
+    <form method="POST" action="/admin/schedule" class="row" id="schedule-form">
+      <div>
+        <label>Scheduled send time (your local time)</label>
+        <input type="datetime-local" id="scheduled-local-input">
+        <input type="hidden" name="scheduled_send_at" id="scheduled-utc-input">
+      </div>
+      <div>
+        <button type="submit" class="secondary">Save schedule</button>
+      </div>
+    </form>
+    <p class="muted" style="margin-top:12px;">
+      <% if (settings.scheduled_send_at) { %>
+        Surveys will be auto-sent to all pending companies at <strong id="scheduled-display"></strong> your local time, once the external trigger pings the app (see setup notes).
+      <% } else { %>
+        No scheduled time set — emails only go out when you click "Send" below, or manually via "Email text".
+      <% } %>
+    </p>
+    <form method="POST" action="/admin/companies/send-all" style="margin: 14px 0 0;" onsubmit="return confirm('Send the survey email to every pending company right now?')">
+      <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send to all pending now</button>
+    </form>
+  </div>
   <script>
     (function () {
       var stored = <%- JSON.stringify(settings.scheduled_send_at) %>;
@@ -97,11 +104,8 @@ info@gamma.gi"></textarea>
       });
     })();
   </script>
-  <form method="POST" action="/admin/companies/send-all" style="margin: 10px 0;" onsubmit="return confirm('Send the survey email to every pending company right now?')">
-    <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send to all pending now</button>
-  </form>
 
-  <table>
+  <table class="card-table">
     <thead>
       <tr>
         <th>Label</th><th>Email</th><th>Status</th><th>Created</th><th>Submitted</th><th>Email sent</th><th>Actions</th>

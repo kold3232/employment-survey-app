@@ -8,16 +8,18 @@
 <body>
   <nav><a href="/">&larr; Back to dashboard</a></nav>
   <h1>Email for <%= company.company_label || company.contact_email %></h1>
-  <p><strong>To:</strong> <%= company.contact_email %></p>
-  <p><strong>Subject:</strong> <%= subject %></p>
-  <pre id="body"><%= body %></pre>
-  <button onclick="navigator.clipboard.writeText(document.getElementById('body').innerText)">Copy email body</button>
-  <% if (emailConfigured) { %>
-    <form method="POST" action="/admin/companies/<%= company.id %>/send" style="display:inline; margin-left:8px;">
-      <button type="submit">Send this email now</button>
-    </form>
-  <% } else { %>
-    <p class="muted">Email sending isn't configured yet (missing SMTP env vars) — copy this into your email client for now.</p>
-  <% } %>
+  <div class="card">
+    <p><strong>To:</strong> <%= company.contact_email %></p>
+    <p><strong>Subject:</strong> <%= subject %></p>
+    <pre id="body"><%= body %></pre>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('body').innerText)">Copy email body</button>
+    <% if (emailConfigured) { %>
+      <form method="POST" action="/admin/companies/<%= company.id %>/send" style="display:inline; margin-left:8px;">
+        <button type="submit">Send this email now</button>
+      </form>
+    <% } else { %>
+      <p class="muted">Email sending isn't configured yet (missing RESEND_API_KEY) — copy this into your email client for now.</p>
+    <% } %>
+  </div>
 </body>
 </html>

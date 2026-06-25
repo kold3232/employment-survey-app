@@ -7,11 +7,12 @@
   <%- include('partials-style') %>
   <style>
     .section-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin: 14px 0 28px;
-      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      margin: 16px 0 30px;
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
     }
     .section-card h2 { margin-top: 0; }
     .section-card > p.muted { margin-top: -4px; }
@@ -19,18 +20,19 @@
     .nil-row {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       margin: 10px 0 14px;
       font-size: 0.9rem;
+      font-weight: 500;
       cursor: pointer;
       user-select: none;
     }
-    .nil-row input { width: auto; cursor: pointer; }
+    .nil-row input { width: auto; cursor: pointer; accent-color: var(--primary); }
 
     .table-scroll {
       overflow-x: auto;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
       background: white;
     }
 
@@ -43,21 +45,22 @@
       min-width: 1180px;
     }
     .emp-header {
-      padding: 10px 10px;
-      background: #f3f4f6;
-      color: #4b5563;
-      font-size: 0.72rem;
-      font-weight: 600;
+      padding: 11px 10px;
+      background: #f8f8fd;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
-      border-bottom: 1px solid #e0e0e0;
-      border-radius: 8px 8px 0 0;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
     }
     .emp-row {
       padding: 8px 10px;
-      border-bottom: 1px solid #ececec;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s ease;
     }
-    .emp-row:hover { background: #f8fafc; }
+    .emp-row:hover { background: #fafaff; }
     .emp-row:last-child { border-bottom: none; }
 
     .emp-cols select, .emp-cols input {
@@ -66,8 +69,8 @@
       font-size: 0.82rem;
       padding: 6px 8px;
       height: 34px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
       background: white;
     }
     .emp-cols select { cursor: pointer; }
@@ -81,13 +84,15 @@
       padding: 4px;
       line-height: 1;
       justify-self: center;
+      box-shadow: none !important;
+      transform: none !important;
     }
-    .remove-btn:hover { color: #b91c1c; }
+    .remove-btn:hover { color: #b91c1c; background: none; }
 
     .add-row-btn { margin-top: 10px; }
 
-    .field-error { border-color: #dc2626 !important; box-shadow: 0 0 0 2px rgba(220,38,38,0.15); }
-    .error-msg { color: #dc2626; font-size: 0.85rem; margin: 4px 0; }
+    .field-error { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.15) !important; }
+    .error-msg { color: #dc2626; font-size: 0.85rem; margin: 4px 0; font-weight: 600; }
 
     @media (max-width: 700px) {
       .row { flex-direction: column; align-items: stretch; }
@@ -103,27 +108,29 @@
   <div id="error-summary" class="error-msg" style="display:none;"></div>
 
   <form method="POST" action="/survey/<%= company.token %>" id="survey-form">
-    <h2>Employer Details</h2>
-    <div class="row">
-      <div><label>Registered name of firm/establishment *</label><input type="text" name="registered_name" required></div>
-      <div><label>Trading as</label><input type="text" name="trading_as"></div>
-    </div>
-    <div class="row">
-      <div style="flex:1;"><label>Address *</label><input type="text" name="address" required style="width:100%;"></div>
-    </div>
-    <div class="row">
-      <div><label>Tel</label><input type="text" name="tel"></div>
-      <div><label>Fax</label><input type="text" name="fax"></div>
-      <div><label>E-mail</label><input type="email" name="email"></div>
-    </div>
-    <div class="row">
-      <div><label>Main goods or services provided</label><input type="text" name="main_goods_services" size="40"></div>
-      <div><label>Other information</label><input type="text" name="other_info" size="40"></div>
-    </div>
-    <div class="row">
-      <div><label>Name *</label><input type="text" name="contact_name" required></div>
-      <div><label>Position</label><input type="text" name="contact_position"></div>
-      <div><label>Date</label><input type="date" name="submission_date"></div>
+    <div class="section-card">
+      <h2 style="margin-top:0;">Employer Details</h2>
+      <div class="row">
+        <div><label>Registered name of firm/establishment *</label><input type="text" name="registered_name" required></div>
+        <div><label>Trading as</label><input type="text" name="trading_as"></div>
+      </div>
+      <div class="row">
+        <div style="flex:1;"><label>Address *</label><input type="text" name="address" required style="width:100%;"></div>
+      </div>
+      <div class="row">
+        <div><label>Tel</label><input type="text" name="tel"></div>
+        <div><label>Fax</label><input type="text" name="fax"></div>
+        <div><label>E-mail</label><input type="email" name="email"></div>
+      </div>
+      <div class="row">
+        <div><label>Main goods or services provided</label><input type="text" name="main_goods_services" size="40"></div>
+        <div><label>Other information</label><input type="text" name="other_info" size="40"></div>
+      </div>
+      <div class="row">
+        <div><label>Name *</label><input type="text" name="contact_name" required></div>
+        <div><label>Position</label><input type="text" name="contact_position"></div>
+        <div><label>Date</label><input type="date" name="submission_date"></div>
+      </div>
     </div>
 
     <div class="section-card">
