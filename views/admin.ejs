@@ -56,10 +56,11 @@ info@gamma.gi"></textarea>
   </details>
 
   <h2>Send Surveys</h2>
-  <form method="POST" action="/admin/schedule" class="row">
+  <form method="POST" action="/admin/schedule" class="row" id="schedule-form">
     <div>
-      <label>Scheduled send time (optional)</label>
-      <input type="datetime-local" name="scheduled_send_at" value="<%= settings.scheduled_send_at || '' %>">
+      <label>Scheduled send time (your local time)</label>
+      <input type="datetime-local" id="scheduled-local-input">
+      <input type="hidden" name="scheduled_send_at" id="scheduled-utc-input">
     </div>
     <div>
       <button type="submit" class="secondary">Save schedule</button>
@@ -67,11 +68,35 @@ info@gamma.gi"></textarea>
   </form>
   <p class="muted">
     <% if (settings.scheduled_send_at) { %>
-      Surveys will be auto-sent to all pending companies at <strong><%= settings.scheduled_send_at %></strong>, once the external trigger pings the app (see setup notes).
+      Surveys will be auto-sent to all pending companies at <strong id="scheduled-display"></strong> your local time, once the external trigger pings the app (see setup notes).
     <% } else { %>
       No scheduled time set — emails only go out when you click "Send" below, or manually via "Email text".
     <% } %>
   </p>
+  <script>
+    (function () {
+      var stored = <%- JSON.stringify(settings.scheduled_send_at) %>;
+      var localInput = document.getElementById('scheduled-local-input');
+      var utcInput = document.getElementById('scheduled-utc-input');
+      var pad = (n) => String(n).padStart(2, '0');
+
+      function toLocalInputValue(date) {
+        return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
+          + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+      }
+
+      if (stored) {
+        var d = new Date(stored);
+        localInput.value = toLocalInputValue(d);
+        var display = document.getElementById('scheduled-display');
+        if (display) display.textContent = d.toLocaleString();
+      }
+
+      document.getElementById('schedule-form').addEventListener('submit', function () {
+        utcInput.value = localInput.value ? new Date(localInput.value).toISOString() : '';
+      });
+    })();
+  </script>
   <form method="POST" action="/admin/companies/send-all" style="margin: 10px 0;" onsubmit="return confirm('Send the survey email to every pending company right now?')">
     <button type="submit" <%= emailConfigured ? '' : 'disabled' %>>Send to all pending now</button>
   </form>
