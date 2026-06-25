@@ -13,7 +13,7 @@
   <h1>Companies</h1>
 
   <% if (!emailConfigured) { %>
-    <p class="badge pending">Email sending is not configured yet — set SMTP_HOST / SMTP_USER / SMTP_PASS env vars. Until then, use "Email text" to copy/paste manually.</p>
+    <p class="badge pending">Email sending is not configured yet — set the RESEND_API_KEY env var. Until then, use "Email text" to copy/paste manually.</p>
   <% } %>
 
   <% if (bulkAdded !== null) { %>
