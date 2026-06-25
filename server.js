@@ -67,8 +67,8 @@ app.get('/admin/companies/:id/email-preview', requireAdmin, (req, res) => {
   res.render('email-preview', { company, link, subject, body });
 });
 
-app.get('/report', requireAdmin, (req, res) => {
-  const report = buildReport(db);
+app.get('/report', requireAdmin, async (req, res) => {
+  const report = await buildReport(db);
   res.render('report', { report });
 });
 

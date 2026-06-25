@@ -1,4 +1,4 @@
-function buildReport(db) {
+async function buildReport(db) {
   const companies = db.prepare(`SELECT * FROM companies WHERE status = 'submitted'`).all();
   const employees = db.prepare(`
     SELECT e.* FROM employees e
@@ -33,16 +33,20 @@ function buildReport(db) {
     Math.abs(e.gross_earnings - meanEarnings) > 2 * stdDev(earningsValues)
   );
 
-  const summaryText = generateNarrativeSummary({
+  const statsForSummary = {
     totalCompanies, totalEmployees,
     sexBreakdown: breakdown('sex'),
     employmentTypeBreakdown: breakdown('employment_type'),
     nationalityBreakdown: breakdown('nationality'),
+    occupationBreakdown: breakdown('occupation'),
     avgHours: avg('hours_worked'),
     avgOvertime: avg('overtime_hours'),
     avgEarnings: meanEarnings,
+    avgBenefits: avg('benefits_value'),
     outlierCount: outliers.length,
-  });
+  };
+
+  const summaryText = await generateNarrativeSummary(statsForSummary);
 
   return {
     totalCompanies,
@@ -71,21 +75,50 @@ function stdDev(values) {
   return Math.sqrt(variance);
 }
 
-/**
- * Plain-stats narrative for now. To upgrade to an AI-generated narrative,
- * call the Claude API here with `stats` as context and return the model's
- * text instead. Needs an ANTHROPIC_API_KEY env var once you have one:
- *
- *   const Anthropic = require('@anthropic-ai/sdk');
- *   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
- *   const msg = await client.messages.create({
- *     model: 'claude-sonnet-4-6',
- *     max_tokens: 800,
- *     messages: [{ role: 'user', content: `Summarize this employment survey data: ${JSON.stringify(stats)}` }],
- *   });
- *   return msg.content[0].text;
- */
-function generateNarrativeSummary(stats) {
+async function generateNarrativeSummary(stats) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (apiKey) {
+    try {
+      return await generateWithClaude(stats, apiKey);
+    } catch (err) {
+      console.error('Claude summary failed, falling back to plain stats:', err.message);
+    }
+  }
+  return generatePlainStatsSummary(stats);
+}
+
+async function generateWithClaude(stats, apiKey) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{
+        role: 'user',
+        content: `You are writing the executive summary section of an employment survey report. ` +
+          `Write a concise, professional narrative (3-5 short paragraphs, no headers, no bullet points) ` +
+          `summarizing the following aggregated survey statistics. Highlight notable patterns, ` +
+          `any outliers, and what stands out about the workforce composition. Do not invent figures ` +
+          `beyond what is given.\n\nStatistics (JSON):\n${JSON.stringify(stats, null, 2)}`,
+      }],
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Anthropic API ${response.status}: ${text}`);
+  }
+
+  const data = await response.json();
+  return data.content[0].text.trim();
+}
+
+function generatePlainStatsSummary(stats) {
   const lines = [];
   lines.push(`${stats.totalCompanies} companies submitted responses, covering ${stats.totalEmployees} employees in total.`);
 
