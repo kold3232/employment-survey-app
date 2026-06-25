@@ -47,55 +47,51 @@ async function sendCompanyEmail(company) {
   const { subject, body } = buildEmailContent(company);
   try {
     await mailer.sendSurveyEmail({ to: company.contact_email, subject, text: body });
-    db.prepare('UPDATE companies SET email_sent_at = datetime(\'now\'), email_send_error = NULL WHERE id = ?')
-      .run(company.id);
+    await db.run('UPDATE companies SET email_sent_at = NOW(), email_send_error = NULL WHERE id = ?', [company.id]);
     return { ok: true };
   } catch (err) {
-    db.prepare('UPDATE companies SET email_send_error = ? WHERE id = ?').run(err.message, company.id);
+    await db.run('UPDATE companies SET email_send_error = ? WHERE id = ?', [err.message, company.id]);
     return { ok: false, error: err.message };
   }
 }
 
-function getSettings() {
-  return db.prepare('SELECT * FROM settings WHERE id = 1').get();
+async function getSettings() {
+  return db.get('SELECT * FROM settings WHERE id = 1');
 }
 
 // ---------- Admin dashboard ----------
-app.get('/', requireAdmin, (req, res) => {
-  const companies = db.prepare(
-    'SELECT * FROM companies ORDER BY created_at DESC'
-  ).all();
+app.get('/', requireAdmin, async (req, res) => {
+  const companies = await db.all('SELECT * FROM companies ORDER BY created_at DESC');
   res.render('admin', {
     companies,
     baseUrl: BASE_URL,
     bulkAdded: req.query.bulk_added ?? null,
     bulkSkipped: req.query.bulk_skipped ?? null,
     emailConfigured: mailer.isConfigured(),
-    settings: getSettings(),
+    settings: await getSettings(),
     sendResult: req.query.send_result ?? null,
     sent: req.query.sent ?? null,
     failed: req.query.failed ?? null,
   });
 });
 
-app.post('/admin/schedule', requireAdmin, (req, res) => {
+app.post('/admin/schedule', requireAdmin, async (req, res) => {
   const { scheduled_send_at } = req.body;
-  db.prepare('UPDATE settings SET scheduled_send_at = ? WHERE id = 1')
-    .run(scheduled_send_at ? scheduled_send_at : null);
+  await db.run('UPDATE settings SET scheduled_send_at = ? WHERE id = 1', [scheduled_send_at || null]);
   res.redirect('/');
 });
 
 app.post('/admin/companies/:id/send', requireAdmin, async (req, res) => {
-  const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(req.params.id);
+  const company = await db.get('SELECT * FROM companies WHERE id = ?', [req.params.id]);
   if (!company) return res.status(404).send('Not found');
   const result = await sendCompanyEmail(company);
   res.redirect(`/?send_result=${result.ok ? 'ok' : 'fail'}`);
 });
 
 app.post('/admin/companies/send-all', requireAdmin, async (req, res) => {
-  const pending = db.prepare(
+  const pending = await db.all(
     `SELECT * FROM companies WHERE status = 'pending' AND email_sent_at IS NULL`
-  ).all();
+  );
   let sent = 0, failed = 0;
   for (const company of pending) {
     const result = await sendCompanyEmail(company);
@@ -104,23 +100,21 @@ app.post('/admin/companies/send-all', requireAdmin, async (req, res) => {
   res.redirect(`/?send_result=batch&sent=${sent}&failed=${failed}`);
 });
 
-app.post('/admin/companies', requireAdmin, (req, res) => {
+app.post('/admin/companies', requireAdmin, async (req, res) => {
   const { contact_email, company_label } = req.body;
   if (!contact_email) return res.redirect('/');
   const token = nanoid(12);
-  db.prepare(
-    'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)'
-  ).run(token, contact_email.trim(), (company_label || '').trim());
+  await db.run(
+    'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)',
+    [token, contact_email.trim(), (company_label || '').trim()]
+  );
   res.redirect('/');
 });
 
-app.post('/admin/companies/bulk', requireAdmin, (req, res) => {
+app.post('/admin/companies/bulk', requireAdmin, async (req, res) => {
   const { bulk_input } = req.body;
   if (!bulk_input) return res.redirect('/');
 
-  const insert = db.prepare(
-    'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)'
-  );
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   let added = 0;
@@ -133,20 +127,23 @@ app.post('/admin/companies/bulk', requireAdmin, (req, res) => {
     const email = (emailPart || '').trim();
     const label = labelParts.join(',').trim();
     if (!emailRe.test(email)) { skipped++; continue; }
-    insert.run(nanoid(12), email, label);
+    await db.run(
+      'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)',
+      [nanoid(12), email, label]
+    );
     added++;
   }
 
   res.redirect(`/?bulk_added=${added}&bulk_skipped=${skipped}`);
 });
 
-app.post('/admin/companies/:id/delete', requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM companies WHERE id = ?').run(req.params.id);
+app.post('/admin/companies/:id/delete', requireAdmin, async (req, res) => {
+  await db.run('DELETE FROM companies WHERE id = ?', [req.params.id]);
   res.redirect('/');
 });
 
-app.get('/admin/companies/:id/email-preview', requireAdmin, (req, res) => {
-  const company = db.prepare('SELECT * FROM companies WHERE id = ?').get(req.params.id);
+app.get('/admin/companies/:id/email-preview', requireAdmin, async (req, res) => {
+  const company = await db.get('SELECT * FROM companies WHERE id = ?', [req.params.id]);
   if (!company) return res.status(404).send('Not found');
   const { link, subject, body } = buildEmailContent(company);
   res.render('email-preview', { company, link, subject, body, emailConfigured: mailer.isConfigured() });
@@ -159,7 +156,7 @@ app.all('/cron/send-scheduled', async (req, res) => {
     return res.status(401).send('Unauthorized');
   }
 
-  const settings = getSettings();
+  const settings = await getSettings();
   if (!settings.scheduled_send_at) {
     return res.json({ fired: false, reason: 'no scheduled_send_at set' });
   }
@@ -167,9 +164,9 @@ app.all('/cron/send-scheduled', async (req, res) => {
     return res.json({ fired: false, reason: 'scheduled time not reached yet' });
   }
 
-  const pending = db.prepare(
+  const pending = await db.all(
     `SELECT * FROM companies WHERE status = 'pending' AND email_sent_at IS NULL`
-  ).all();
+  );
 
   let sent = 0, failed = 0;
   for (const company of pending) {
@@ -186,48 +183,46 @@ app.get('/report', requireAdmin, async (req, res) => {
 });
 
 // ---------- Public survey ----------
-app.get('/survey/:token', (req, res) => {
-  const company = db.prepare('SELECT * FROM companies WHERE token = ?').get(req.params.token);
+app.get('/survey/:token', async (req, res) => {
+  const company = await db.get('SELECT * FROM companies WHERE token = ?', [req.params.token]);
   if (!company) return res.status(404).send('Survey link not found or expired.');
   res.render('survey', { company });
 });
 
-app.post('/survey/:token', (req, res) => {
-  const company = db.prepare('SELECT * FROM companies WHERE token = ?').get(req.params.token);
+app.post('/survey/:token', async (req, res) => {
+  const company = await db.get('SELECT * FROM companies WHERE token = ?', [req.params.token]);
   if (!company) return res.status(404).send('Survey link not found or expired.');
 
   const b = req.body;
 
-  db.prepare(`
+  await db.run(`
     UPDATE companies SET
       registered_name = ?, trading_as = ?, address = ?, tel = ?, fax = ?, email = ?,
       main_goods_services = ?, other_info = ?, contact_name = ?, contact_position = ?,
-      submission_date = ?, status = 'submitted', submitted_at = datetime('now')
+      submission_date = ?, status = 'submitted', submitted_at = NOW()
     WHERE id = ?
-  `).run(
+  `, [
     b.registered_name || '', b.trading_as || '', b.address || '', b.tel || '', b.fax || '',
     b.email || '', b.main_goods_services || '', b.other_info || '', b.contact_name || '',
     b.contact_position || '', b.submission_date || '', company.id
-  );
+  ]);
 
   // clear previous employee rows for this company (in case of resubmission)
-  db.prepare('DELETE FROM employees WHERE company_id = ?').run(company.id);
-
-  const insertEmp = db.prepare(`
-    INSERT INTO employees (
-      company_id, section, sex, age_band, employment_type, occupation, nationality,
-      frontier_worker, detached_worker, hours_worked, overtime_hours, gross_earnings, benefits_value
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  await db.run('DELETE FROM employees WHERE company_id = ?', [company.id]);
 
   for (const section of ['weekly', 'monthly']) {
     const rows = parseEmployeeRows(b, section);
     for (const row of rows) {
-      insertEmp.run(
+      await db.run(`
+        INSERT INTO employees (
+          company_id, section, sex, age_band, employment_type, occupation, nationality,
+          frontier_worker, detached_worker, hours_worked, overtime_hours, gross_earnings, benefits_value
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
         company.id, section, row.sex, row.age_band, row.employment_type, row.occupation,
         row.nationality, row.frontier_worker, row.detached_worker, row.hours_worked,
         row.overtime_hours, row.gross_earnings, row.benefits_value
-      );
+      ]);
     }
   }
 
@@ -272,6 +267,13 @@ function parseEmployeeRows(body, section) {
   return rows;
 }
 
-app.listen(PORT, () => {
-  console.log(`Employment Survey app running at ${BASE_URL}`);
-});
+db.init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Employment Survey app running at ${BASE_URL}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  });

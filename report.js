@@ -1,10 +1,10 @@
 async function buildReport(db) {
-  const companies = db.prepare(`SELECT * FROM companies WHERE status = 'submitted'`).all();
-  const employees = db.prepare(`
+  const companies = await db.all(`SELECT * FROM companies WHERE status = 'submitted'`);
+  const employees = await db.all(`
     SELECT e.* FROM employees e
     JOIN companies c ON c.id = e.company_id
     WHERE c.status = 'submitted'
-  `).all();
+  `);
 
   const totalCompanies = companies.length;
   const totalEmployees = employees.length;

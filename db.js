@@ -1,69 +1,86 @@
-const { DatabaseSync } = require('node:sqlite');
-const path = require('node:path');
-const fs = require('node:fs');
+const { Pool } = require('pg');
 
-const dataDir = path.join(__dirname, 'data');
-fs.mkdirSync(dataDir, { recursive: true });
-
-const db = new DatabaseSync(path.join(dataDir, 'survey.db'));
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS companies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token TEXT UNIQUE NOT NULL,
-    contact_email TEXT NOT NULL,
-    company_label TEXT,
-    status TEXT NOT NULL DEFAULT 'pending', -- pending | submitted
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    submitted_at TEXT,
-
-    registered_name TEXT,
-    trading_as TEXT,
-    address TEXT,
-    tel TEXT,
-    fax TEXT,
-    email TEXT,
-    main_goods_services TEXT,
-    other_info TEXT,
-    contact_name TEXT,
-    contact_position TEXT,
-    submission_date TEXT,
-
-    email_sent_at TEXT,
-    email_send_error TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS settings (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    scheduled_send_at TEXT
-  );
-  INSERT OR IGNORE INTO settings (id, scheduled_send_at) VALUES (1, NULL);
-
-  CREATE TABLE IF NOT EXISTS employees (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-    section TEXT NOT NULL, -- weekly | monthly
-    sex TEXT,
-    age_band TEXT,
-    employment_type TEXT, -- full-time | part-time
-    occupation TEXT,
-    nationality TEXT,
-    frontier_worker TEXT, -- Yes | No
-    detached_worker TEXT, -- Yes | No
-    hours_worked REAL,
-    overtime_hours REAL,
-    gross_earnings REAL,
-    benefits_value REAL
-  );
-`);
-
-// Migrate columns onto pre-existing databases that predate this schema addition.
-for (const col of ['email_sent_at TEXT', 'email_send_error TEXT']) {
-  try {
-    db.exec(`ALTER TABLE companies ADD COLUMN ${col}`);
-  } catch (err) {
-    if (!String(err.message).includes('duplicate column')) throw err;
-  }
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is not set. Add a Postgres connection string as an environment variable.');
 }
 
-module.exports = db;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+});
+
+// Accepts '?' placeholders (like the rest of this codebase used to write for SQLite)
+// and converts them to Postgres-style $1, $2, ... placeholders.
+function toPgQuery(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
+async function all(sql, params = []) {
+  const { rows } = await pool.query(toPgQuery(sql), params);
+  return rows;
+}
+
+async function get(sql, params = []) {
+  const { rows } = await pool.query(toPgQuery(sql), params);
+  return rows[0];
+}
+
+async function run(sql, params = []) {
+  const result = await pool.query(toPgQuery(sql), params);
+  return { rowCount: result.rowCount };
+}
+
+async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id SERIAL PRIMARY KEY,
+      token TEXT UNIQUE NOT NULL,
+      contact_email TEXT NOT NULL,
+      company_label TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      submitted_at TIMESTAMPTZ,
+
+      registered_name TEXT,
+      trading_as TEXT,
+      address TEXT,
+      tel TEXT,
+      fax TEXT,
+      email TEXT,
+      main_goods_services TEXT,
+      other_info TEXT,
+      contact_name TEXT,
+      contact_position TEXT,
+      submission_date TEXT,
+
+      email_sent_at TIMESTAMPTZ,
+      email_send_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      scheduled_send_at TEXT
+    );
+    INSERT INTO settings (id, scheduled_send_at) VALUES (1, NULL) ON CONFLICT (id) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS employees (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      section TEXT NOT NULL,
+      sex TEXT,
+      age_band TEXT,
+      employment_type TEXT,
+      occupation TEXT,
+      nationality TEXT,
+      frontier_worker TEXT,
+      detached_worker TEXT,
+      hours_worked REAL,
+      overtime_hours REAL,
+      gross_earnings REAL,
+      benefits_value REAL
+    );
+  `);
+}
+
+module.exports = { all, get, run, init, pool };
