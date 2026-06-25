@@ -29,7 +29,12 @@ app.get('/', requireAdmin, (req, res) => {
   const companies = db.prepare(
     'SELECT * FROM companies ORDER BY created_at DESC'
   ).all();
-  res.render('admin', { companies, baseUrl: BASE_URL });
+  res.render('admin', {
+    companies,
+    baseUrl: BASE_URL,
+    bulkAdded: req.query.bulk_added ?? null,
+    bulkSkipped: req.query.bulk_skipped ?? null,
+  });
 });
 
 app.post('/admin/companies', requireAdmin, (req, res) => {
@@ -40,6 +45,32 @@ app.post('/admin/companies', requireAdmin, (req, res) => {
     'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)'
   ).run(token, contact_email.trim(), (company_label || '').trim());
   res.redirect('/');
+});
+
+app.post('/admin/companies/bulk', requireAdmin, (req, res) => {
+  const { bulk_input } = req.body;
+  if (!bulk_input) return res.redirect('/');
+
+  const insert = db.prepare(
+    'INSERT INTO companies (token, contact_email, company_label) VALUES (?, ?, ?)'
+  );
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  let added = 0;
+  let skipped = 0;
+
+  for (const rawLine of bulk_input.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const [emailPart, ...labelParts] = line.split(',');
+    const email = (emailPart || '').trim();
+    const label = labelParts.join(',').trim();
+    if (!emailRe.test(email)) { skipped++; continue; }
+    insert.run(nanoid(12), email, label);
+    added++;
+  }
+
+  res.redirect(`/?bulk_added=${added}&bulk_skipped=${skipped}`);
 });
 
 app.post('/admin/companies/:id/delete', requireAdmin, (req, res) => {

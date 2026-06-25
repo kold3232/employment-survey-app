@@ -2,21 +2,38 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Employment Survey 2025</title>
   <%- include('partials-style') %>
+  <style>
+    .table-scroll { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; }
+    table.emp-table { min-width: 1100px; margin: 0; }
+    table.emp-table th { font-size: 0.75rem; white-space: nowrap; }
+    table.emp-table td { padding: 4px; }
+    table.emp-table input, table.emp-table select { width: 100%; box-sizing: border-box; }
+    .field-error { border-color: #dc2626 !important; }
+    .error-msg { color: #dc2626; font-size: 0.85rem; margin: 4px 0; }
+    .nil-row { margin: 8px 0; }
+    @media (max-width: 700px) {
+      .row { flex-direction: column; align-items: stretch; }
+      .row > div { width: 100%; }
+    }
+  </style>
 </head>
 <body>
   <h1>Employment Survey 2025</h1>
-  <p class="muted">For the pay week including 10 October 2025, and the month of October 2025. All replies are treated in confidence.</p>
+  <p class="muted">For the pay week including 10 October 2025, and the month of October 2025. All replies are treated in confidence. If your company has no employees to report, tick the "Nil return" box for that section.</p>
 
-  <form method="POST" action="/survey/<%= company.token %>">
+  <div id="error-summary" class="error-msg" style="display:none;"></div>
+
+  <form method="POST" action="/survey/<%= company.token %>" id="survey-form">
     <h2>Employer Details</h2>
     <div class="row">
-      <div><label>Registered name of firm/establishment</label><input type="text" name="registered_name" required></div>
+      <div><label>Registered name of firm/establishment *</label><input type="text" name="registered_name" required></div>
       <div><label>Trading as</label><input type="text" name="trading_as"></div>
     </div>
     <div class="row">
-      <div><label>Address</label><input type="text" name="address" size="50" required></div>
+      <div style="flex:1;"><label>Address *</label><input type="text" name="address" required style="width:100%;"></div>
     </div>
     <div class="row">
       <div><label>Tel</label><input type="text" name="tel"></div>
@@ -28,57 +45,113 @@
       <div><label>Other information</label><input type="text" name="other_info" size="40"></div>
     </div>
     <div class="row">
-      <div><label>Name</label><input type="text" name="contact_name" required></div>
+      <div><label>Name *</label><input type="text" name="contact_name" required></div>
       <div><label>Position</label><input type="text" name="contact_position"></div>
       <div><label>Date</label><input type="date" name="submission_date"></div>
     </div>
 
     <h2>Section A: Weekly Paid Employees</h2>
     <p class="muted">Add one row per employee. Enter hours, overtime, total weekly gross earnings, and weekly value of benefits.</p>
-    <div id="weekly-rows"></div>
-    <button type="button" onclick="addRow('weekly')">+ Add weekly employee</button>
+    <label class="nil-row"><input type="checkbox" id="weekly-nil" onchange="toggleNil('weekly')"> Nil return — no weekly-paid employees</label>
+    <div id="weekly-section">
+      <div class="table-scroll">
+        <table class="emp-table">
+          <thead>
+            <tr>
+              <th>Sex</th><th>Age</th><th>Type</th><th>Occupation *</th><th>Nationality</th>
+              <th>Frontier</th><th>Detached</th><th>Hours</th><th>Overtime hrs</th>
+              <th>Gross earnings</th><th>Benefits value</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="weekly-rows"></tbody>
+        </table>
+      </div>
+      <button type="button" onclick="addRow('weekly')">+ Add weekly employee</button>
+    </div>
 
     <h2>Section B: Monthly Paid Employees</h2>
     <p class="muted">Add one row per employee. Enter monthly gross earnings and monthly value of benefits.</p>
-    <div id="monthly-rows"></div>
-    <button type="button" onclick="addRow('monthly')">+ Add monthly employee</button>
+    <label class="nil-row"><input type="checkbox" id="monthly-nil" onchange="toggleNil('monthly')"> Nil return — no monthly-paid employees</label>
+    <div id="monthly-section">
+      <div class="table-scroll">
+        <table class="emp-table">
+          <thead>
+            <tr>
+              <th>Sex</th><th>Age</th><th>Type</th><th>Occupation *</th><th>Nationality</th>
+              <th>Frontier</th><th>Detached</th><th>Hours</th><th>Overtime hrs</th>
+              <th>Gross earnings</th><th>Benefits value</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="monthly-rows"></tbody>
+        </table>
+      </div>
+      <button type="button" onclick="addRow('monthly')">+ Add monthly employee</button>
+    </div>
 
     <h2></h2>
     <button type="submit">Submit survey</button>
   </form>
 
   <template id="row-template">
-    <div class="emp-row">
-      <select name="__SECTION___sex[]"><option value="">Sex</option><option>Male</option><option>Female</option></select>
-      <select name="__SECTION___age_band[]"><option value="">Age</option><option>Under 18</option><option>18 to 24</option><option>25 and over</option></select>
-      <select name="__SECTION___employment_type[]"><option value="">Type</option><option>Full-time</option><option>Part-time</option></select>
-      <input name="__SECTION___occupation[]" placeholder="Occupation" required>
-      <select name="__SECTION___nationality[]">
-        <option value="">Nationality</option>
+    <tr class="emp-row">
+      <td><select name="__SECTION___sex[]"><option value="">—</option><option>Male</option><option>Female</option></select></td>
+      <td><select name="__SECTION___age_band[]"><option value="">—</option><option>Under 18</option><option>18 to 24</option><option>25 and over</option></select></td>
+      <td><select name="__SECTION___employment_type[]"><option value="">—</option><option>Full-time</option><option>Part-time</option></select></td>
+      <td><input name="__SECTION___occupation[]" placeholder="e.g. Accounts Clerk" required></td>
+      <td><select name="__SECTION___nationality[]">
+        <option value="">—</option>
         <option>Gibraltarian</option><option>UK British</option><option>Other British</option>
         <option>Spanish</option><option>Moroccan</option><option>Other E.U.</option><option>Other</option>
-      </select>
-      <select name="__SECTION___frontier_worker[]"><option value="No">Frontier? No</option><option value="Yes">Frontier? Yes</option></select>
-      <select name="__SECTION___detached_worker[]"><option value="No">Detached? No</option><option value="Yes">Detached? Yes</option></select>
-      <input name="__SECTION___hours_worked[]" type="number" step="0.1" placeholder="Hours">
-      <input name="__SECTION___overtime_hours[]" type="number" step="0.1" placeholder="Overtime hrs">
-      <input name="__SECTION___gross_earnings[]" type="number" step="0.01" placeholder="Gross earnings">
-      <input name="__SECTION___benefits_value[]" type="number" step="0.01" placeholder="Benefits value">
-      <button type="button" class="danger" onclick="this.closest('.emp-row').remove()">✕</button>
-    </div>
+      </select></td>
+      <td><select name="__SECTION___frontier_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select></td>
+      <td><select name="__SECTION___detached_worker[]"><option value="No">No</option><option value="Yes">Yes</option></select></td>
+      <td><input name="__SECTION___hours_worked[]" type="number" step="0.1" min="0"></td>
+      <td><input name="__SECTION___overtime_hours[]" type="number" step="0.1" min="0"></td>
+      <td><input name="__SECTION___gross_earnings[]" type="number" step="0.01" min="0"></td>
+      <td><input name="__SECTION___benefits_value[]" type="number" step="0.01" min="0"></td>
+      <td><button type="button" class="danger" onclick="this.closest('tr').remove()">✕</button></td>
+    </tr>
   </template>
 
   <script>
     function addRow(section) {
       const tpl = document.getElementById('row-template').innerHTML.replaceAll('__SECTION__', section);
-      const container = document.getElementById(section + '-rows');
-      const wrapper = document.createElement('div');
+      const tbody = document.getElementById(section + '-rows');
+      const wrapper = document.createElement('tbody');
       wrapper.innerHTML = tpl.trim();
-      container.appendChild(wrapper.firstElementChild);
+      tbody.appendChild(wrapper.firstElementChild);
     }
+
+    function toggleNil(section) {
+      const nil = document.getElementById(section + '-nil').checked;
+      const rowsBody = document.getElementById(section + '-rows');
+      const addBtn = document.querySelector(`#${section}-section button`);
+      rowsBody.querySelectorAll('tr').forEach(tr => tr.remove());
+      if (nil) {
+        addBtn.disabled = true;
+      } else {
+        addBtn.disabled = false;
+        addRow(section);
+      }
+    }
+
     // start each section with one row
     addRow('weekly');
     addRow('monthly');
+
+    document.getElementById('survey-form').addEventListener('submit', function (e) {
+      const invalid = this.querySelectorAll(':invalid');
+      const errorBox = document.getElementById('error-summary');
+      if (invalid.length) {
+        e.preventDefault();
+        invalid[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        invalid[0].classList.add('field-error');
+        errorBox.style.display = 'block';
+        errorBox.textContent = 'Please fill in all required fields (marked *) before submitting — including the Occupation field for every employee row you have added, or tick "Nil return" if there are none.';
+      } else {
+        errorBox.style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
